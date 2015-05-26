@@ -1,0 +1,8 @@
+[package]
+name = "mvc"
+version = "0.1.0"
+authors = ["Chris Bouchard <chris@upliftinglemma.net>"]
+
+[lib]
+name = "mvc"
+
