@@ -1,3 +1,2 @@
-pub trait Application : Sync {
-}
+pub trait Application : Sync {}
 
