@@ -7,6 +7,16 @@ struct QueueEntry<V> {
     count: usize
 }
 
+impl<V> QueueEntry<V> {
+    fn new(value: V, count: usize) -> QueueEntry<V> {
+        QueueEntry {
+            value: value,
+            count: count
+        }
+    }
+}
+
+
 pub struct QueueMap<K, V> {
     queue: VecDeque<QueueEntry<V>>,
     indeces: HashMap<K, usize>,
@@ -14,15 +24,14 @@ pub struct QueueMap<K, V> {
     shift: usize
 }
 
-impl<V> QueueEntry<V> {
-    fn new(value: V, count: usize) -> QueueEntry<V> {
-        QueueEntry { value: value, count: count }
-    }
-}
-
 impl<K, V> QueueMap<K, V> where K: Hash + Eq, V: Copy {
     pub fn new() -> QueueMap<K, V> {
-        QueueMap { queue: VecDeque::new(), indeces: HashMap::new(), dangling: 0, shift: 0 }
+        QueueMap {
+            queue: VecDeque::new(),
+            indeces: HashMap::new(),
+            dangling: 0,
+            shift: 0
+        }
     }
 
     pub fn add(&mut self, key: K) {
@@ -76,10 +85,9 @@ impl<K, V> QueueMap<K, V> where K: Hash + Eq, V: Copy {
     }
 
     pub fn is_empty(&self, key: &K) -> bool {
-        match self.indeces.get(key) {
-            None => true,
-            Some(index) => (*index - self.shift) >= self.queue.len()
-        }
+        self.indeces.get(key).map_or(true, |index| {
+            (*index - self.shift) >= self.queue.len()
+        })
     }
 
     pub fn compact(&mut self) {
