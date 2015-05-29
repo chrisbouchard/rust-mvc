@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use super::id_counter;
+
 use super::application::*;
 use super::dispatcher::*;
 use super::event::*;
@@ -8,14 +10,14 @@ pub struct Controller<'a, A: Application + 'a, C> {
     id: usize,
     application: &'a A,
     context: C,
-    sequencer: &'static Dispatcher<'static, SequenceEvent>,
+    sequencer: &'a Dispatcher<'a, SequenceEvent>,
     updaters: HashMap<usize, Box<Fn(&A, &mut C) + 'a>>
 }
 
 impl<'a, A: Application + 'a, C> Controller<'a, A, C> {
-    pub fn new<'b>(application: &'b A, context: C, sequencer: &'static Dispatcher<'static, SequenceEvent>) -> Controller<'b, A, C> {
+    pub fn new<'b>(application: &'b A, context: C, sequencer: &'b Dispatcher<'b, SequenceEvent>) -> Controller<'b, A, C> {
         Controller {
-            id: 0,
+            id: id_counter::next_id(),
             application: application,
             context: context,
             sequencer: sequencer,
@@ -41,8 +43,8 @@ impl<'a, A: Application + 'a, C> Controller<'a, A, C> {
 }
 
 
-pub trait Handler<E: Event> : Copy {
-    type Application;
+pub trait Handler<E: Event> {
+    type Application: Application;
     type Context;
 
     fn handle(&self, event: E, app: &Self::Application, context: &mut Self::Context);
@@ -50,7 +52,7 @@ pub trait Handler<E: Event> : Copy {
 
 
 pub trait AcceptsHandler<E: Event> {
-    type Application;
+    type Application: Application;
     type Context;
 
     fn add_handler<H>(&mut self, handler: H)

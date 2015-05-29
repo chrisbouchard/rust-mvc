@@ -1,5 +1,7 @@
 use std::sync::Mutex;
 
+use super::id_counter;
+
 use super::event::*;
 use super::queue_map::*;
 
@@ -33,7 +35,7 @@ unsafe impl<'a, E: Event> Sync for Dispatcher<'a, E> {}
 impl<'a, E: Event> Dispatcher<'a, E> {
     pub fn new<'b>() -> Dispatcher<'b, E> {
         Dispatcher {
-            id: 0,
+            id: id_counter::next_id(),
             sequencer: None,
             queue_map_mutex: Mutex::new(QueueMap::new())
         }
