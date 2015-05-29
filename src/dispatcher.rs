@@ -33,10 +33,10 @@ pub struct Dispatcher<'a, E: Event> {
 unsafe impl<'a, E: Event> Sync for Dispatcher<'a, E> {}
 
 impl<'a, E: Event> Dispatcher<'a, E> {
-    pub fn new<'b>() -> Dispatcher<'b, E> {
+    pub fn new<'b>(sequencer: &'b Dispatcher<'b, SequenceEvent>) -> Dispatcher<'b, E> {
         Dispatcher {
             id: id_counter::next_id(),
-            sequencer: None,
+            sequencer: Some(sequencer),
             queue_map_mutex: Mutex::new(QueueMap::new())
         }
     }
@@ -55,6 +55,16 @@ impl<'a, E: Event> Dispatcher<'a, E> {
         (*queue_map).pop(&id)
     }
 }
+
+
+pub fn sequencer<'a>() -> Dispatcher<'a, SequenceEvent> {
+    Dispatcher {
+        id: id_counter::next_id(),
+        sequencer: None,
+        queue_map_mutex: Mutex::new(QueueMap::new())
+    }
+}
+
 
 pub trait HasDispatcher<E: Event> {
     fn dispatcher<'a>(&'a self) -> &'a Dispatcher<'a, E>;
