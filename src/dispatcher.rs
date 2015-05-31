@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use std::sync::{Arc, Mutex};
 
 use super::id_counter;
@@ -71,6 +73,12 @@ pub fn sequencer() -> Sequencer {
 
 pub trait HasDispatcher<E: Event> {
     fn dispatcher(&self) -> Arc<Dispatcher<E>>;
+}
+
+impl<E: Event, T: HasDispatcher<E>> HasDispatcher<E> for Deref<Target=T> {
+    fn dispatcher(&self) -> Arc<Dispatcher<E>> {
+        self.deref().dispatcher()
+    }
 }
 
 pub trait Broadcaster<E: Event> {
