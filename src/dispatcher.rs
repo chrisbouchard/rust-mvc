@@ -1,4 +1,4 @@
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use super::id_counter;
 
@@ -24,16 +24,19 @@ impl SequenceEvent {
 impl Event for SequenceEvent {}
 
 
-pub struct Dispatcher<'a, E: Event> {
+pub type Sequencer = Dispatcher<SequenceEvent>;
+
+
+pub struct Dispatcher<E: Event> {
     id: usize,
-    sequencer: Option<&'a Dispatcher<'a, SequenceEvent>>,
+    sequencer: Option<Arc<Sequencer>>,
     queue_map_mutex: Mutex<QueueMap<usize, E>>
 }
 
-unsafe impl<'a, E: Event> Sync for Dispatcher<'a, E> {}
+unsafe impl<E: Event> Sync for Dispatcher<E> {}
 
-impl<'a, E: Event> Dispatcher<'a, E> {
-    pub fn new<'b>(sequencer: &'b Dispatcher<'b, SequenceEvent>) -> Dispatcher<'b, E> {
+impl<E: Event> Dispatcher<E> {
+    pub fn new(sequencer: Arc<Sequencer>) -> Dispatcher<E> {
         Dispatcher {
             id: id_counter::next_id(),
             sequencer: Some(sequencer),
@@ -57,7 +60,7 @@ impl<'a, E: Event> Dispatcher<'a, E> {
 }
 
 
-pub fn sequencer<'a>() -> Dispatcher<'a, SequenceEvent> {
+pub fn sequencer() -> Sequencer {
     Dispatcher {
         id: id_counter::next_id(),
         sequencer: None,
@@ -67,7 +70,7 @@ pub fn sequencer<'a>() -> Dispatcher<'a, SequenceEvent> {
 
 
 pub trait HasDispatcher<E: Event> {
-    fn dispatcher<'a>(&'a self) -> &'a Dispatcher<'a, E>;
+    fn dispatcher(&self) -> Arc<Dispatcher<E>>;
 }
 
 pub trait Broadcaster<E: Event> {
@@ -76,17 +79,17 @@ pub trait Broadcaster<E: Event> {
 
 impl<E: Event> Broadcaster<E> for HasDispatcher<E> {
     fn broadcast(&self, event: E) {
-        self.dispatcher().broadcast(event);
+        (*self.dispatcher()).broadcast(event);
     }
 }
 
-impl<'a, E: Event> Broadcaster<E> for Dispatcher<'a, E> {
+impl<E: Event> Broadcaster<E> for Dispatcher<E> {
     fn broadcast(&self, event: E) {
         let mut queue_map = self.queue_map_mutex.lock().unwrap();
         (*queue_map).push(event);
 
-        self.sequencer.map(|sequencer| {
-            sequencer.broadcast(SequenceEvent::new(self.id));
+        self.sequencer.as_ref().map(|sequencer| {
+            (*sequencer).broadcast(SequenceEvent::new(self.id));
         });
     }
 }

@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use super::id_counter;
 
@@ -8,14 +9,14 @@ use super::event::*;
 
 pub struct Controller<'a, A: Application + 'a, C> {
     id: usize,
-    application: &'a A,
+    application: Arc<A>,
     context: C,
-    sequencer: &'a Dispatcher<'a, SequenceEvent>,
+    sequencer: Arc<Sequencer>,
     updaters: HashMap<usize, Box<Fn(&A, &mut C) + 'a>>
 }
 
 impl<'a, A: Application + 'a, C> Controller<'a, A, C> {
-    pub fn new<'b>(application: &'b A, context: C, sequencer: &'b Dispatcher<'b, SequenceEvent>) -> Controller<'b, A, C> {
+    pub fn new<'b>(application: Arc<A>, context: C, sequencer: Arc<Sequencer>) -> Controller<'b, A, C> {
         Controller {
             id: id_counter::next_id(),
             application: application,
@@ -27,14 +28,14 @@ impl<'a, A: Application + 'a, C> Controller<'a, A, C> {
 
     pub fn run(&mut self) {
         loop {
-            match self.sequencer.receive(self.id) {
+            match (*self.sequencer).receive(self.id) {
                 None => (),
                 Some(seq_event) => {
                     let dispatcher_id = seq_event.dispatcher_id();
 
                     match self.updaters.get(&dispatcher_id) {
                         None => (),
-                        Some(update_box) => (*update_box)(self.application, &mut self.context)
+                        Some(update_box) => (*update_box)(&*self.application, &mut self.context)
                     }
                 }
             }
@@ -67,13 +68,14 @@ where E: Event + 'a, A: Application + 'a + HasDispatcher<E> {
     fn add_handler<H>(&mut self, handler: H) where H: Handler<E, Application=A, Context=C> + 'a {
         let id = self.id;
 
-        let dispatcher: &'a Dispatcher<'a, E> = self.application.dispatcher();
-        let dispatcher_id = dispatcher.id();
+        let app: Arc<A> = self.application.clone();
+        let dispatcher: Arc<Dispatcher<E>> = app.dispatcher();
+        let dispatcher_id = (*dispatcher).id();
 
-        dispatcher.register(id);
+        (*dispatcher).register(id);
 
         self.updaters.insert(dispatcher_id, Box::new(move |app, context| {
-            dispatcher.receive(id).map(|event| handler.handle(event, app, context));
+            (*dispatcher).receive(id).map(|event| handler.handle(event, app, context));
         }));
     }
 }

@@ -1,7 +1,9 @@
-use super::dispatcher::{Dispatcher, HasDispatcher, SequenceEvent};
+use std::sync::Arc;
+
+use super::dispatcher::*;
 
 pub trait Application : HasDispatcher<SequenceEvent> + Sync {
-    fn sequencer<'a>(&'a self) -> &'a Dispatcher<'a, SequenceEvent> {
+    fn sequencer(&self) -> Arc<Sequencer> {
         self.dispatcher()
     }
 }
