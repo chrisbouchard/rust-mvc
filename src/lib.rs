@@ -6,7 +6,7 @@ pub mod id_counter;
 pub mod queue_map;
 
 pub use application::Application;
-pub use listener::{Controller, Handler};
+pub use listener::{Listener, Handler};
 pub use dispatcher::{Broadcaster, Dispatcher, HasDispatcher, SequenceEvent, Sequencer};
 pub use event::Event;
 

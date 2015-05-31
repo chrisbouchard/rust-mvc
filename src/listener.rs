@@ -7,7 +7,7 @@ use super::application::*;
 use super::dispatcher::*;
 use super::event::*;
 
-pub struct Controller<'a, A: Application + 'a, C> {
+pub struct Listener<'a, A: Application + 'a, C> {
     id: usize,
     application: Arc<A>,
     context: C,
@@ -15,9 +15,9 @@ pub struct Controller<'a, A: Application + 'a, C> {
     updaters: HashMap<usize, Box<Fn(&A, &mut C) + 'a>>
 }
 
-impl<'a, A: Application + 'a, C> Controller<'a, A, C> {
-    pub fn new<'b>(application: Arc<A>, context: C, sequencer: Arc<Sequencer>) -> Controller<'b, A, C> {
-        Controller {
+impl<'a, A: Application + 'a, C> Listener<'a, A, C> {
+    pub fn new<'b>(application: Arc<A>, context: C, sequencer: Arc<Sequencer>) -> Listener<'b, A, C> {
+        Listener {
             id: id_counter::next_id(),
             application: application,
             context: context,
@@ -60,7 +60,7 @@ pub trait AcceptsHandler<E: Event> {
         where H: Handler<E, Application=Self::Application, Context=Self::Context>;
 }
 
-impl<'a, E, A, C> AcceptsHandler<E> for Controller<'a, A, C>
+impl<'a, E, A, C> AcceptsHandler<E> for Listener<'a, A, C>
 where E: Event + 'a, A: Application + 'a + HasDispatcher<E> {
     type Application = A;
     type Context = C;
