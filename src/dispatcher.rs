@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use std::sync::{Arc, Mutex};
 
 use super::id_counter;
@@ -59,6 +57,15 @@ impl<E: Event> Dispatcher<E> {
         let mut queue_map = self.queue_map_mutex.lock().unwrap();
         queue_map.pop(&id)
     }
+
+    pub fn broadcast(&self, event: E) {
+        let mut queue_map = self.queue_map_mutex.lock().unwrap();
+        queue_map.push(event);
+
+        self.sequencer.as_ref().map(|sequencer| {
+            sequencer.broadcast(SequenceEvent::new(self.id));
+        });
+    }
 }
 
 
@@ -73,32 +80,5 @@ pub fn sequencer() -> Sequencer {
 
 pub trait HasDispatcher<E: Event> {
     fn dispatcher(&self) -> Arc<Dispatcher<E>>;
-}
-
-impl<E: Event, T: HasDispatcher<E>> HasDispatcher<E> for Deref<Target=T> {
-    fn dispatcher(&self) -> Arc<Dispatcher<E>> {
-        self.deref().dispatcher()
-    }
-}
-
-pub trait Broadcaster<E: Event> {
-    fn broadcast(&self, event: E);
-}
-
-impl<E: Event> Broadcaster<E> for HasDispatcher<E> {
-    fn broadcast(&self, event: E) {
-        self.dispatcher().broadcast(event);
-    }
-}
-
-impl<E: Event> Broadcaster<E> for Dispatcher<E> {
-    fn broadcast(&self, event: E) {
-        let mut queue_map = self.queue_map_mutex.lock().unwrap();
-        queue_map.push(event);
-
-        self.sequencer.as_ref().map(|sequencer| {
-            sequencer.broadcast(SequenceEvent::new(self.id));
-        });
-    }
 }
 

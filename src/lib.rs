@@ -7,6 +7,6 @@ pub mod queue_map;
 
 pub use application::Application;
 pub use listener::{AcceptsHandler, Listener, Handler};
-pub use dispatcher::{Broadcaster, Dispatcher, HasDispatcher, SequenceEvent, Sequencer};
+pub use dispatcher::{Dispatcher, HasDispatcher, SequenceEvent, Sequencer};
 pub use event::Event;
 
