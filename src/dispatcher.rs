@@ -44,14 +44,6 @@ impl<E: Event> Dispatcher<E> {
         }
     }
 
-    pub fn sequencer() -> Sequencer {
-        Dispatcher {
-            id: id_counter::next_id(),
-            sequencer: None,
-            queue_map_mutex: Mutex::new(QueueMap::new())
-        }
-    }
-
     pub fn id(&self) -> usize {
         self.id
     }
@@ -64,6 +56,15 @@ impl<E: Event> Dispatcher<E> {
     pub fn receive(&self, id: usize) -> Option<E> {
         let mut queue_map = self.queue_map_mutex.lock().unwrap();
         (*queue_map).pop(&id)
+    }
+}
+
+
+pub fn sequencer() -> Sequencer {
+    Dispatcher {
+        id: id_counter::next_id(),
+        sequencer: None,
+        queue_map_mutex: Mutex::new(QueueMap::new())
     }
 }
 
