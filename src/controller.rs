@@ -70,12 +70,12 @@ where E: Event + 'a, A: Application + 'a + HasDispatcher<E> {
 
         let app: Arc<A> = self.application.clone();
         let dispatcher: Arc<Dispatcher<E>> = app.dispatcher();
-        let dispatcher_id = (*dispatcher).id();
+        let dispatcher_id = dispatcher.id();
 
-        (*dispatcher).register(id);
+        dispatcher.register(id);
 
         self.updaters.insert(dispatcher_id, Box::new(move |app, context| {
-            (*dispatcher).receive(id).map(|event| handler.handle(event, app, context));
+            dispatcher.receive(id).map(|event| handler.handle(event, app, context));
         }));
     }
 }

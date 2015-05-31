@@ -58,12 +58,12 @@ impl<E: Event> Dispatcher<E> {
 
     pub fn register(&self, id: usize) {
         let mut queue_map = self.queue_map_mutex.lock().unwrap();
-        (*queue_map).add(id);
+        queue_map.add(id);
     }
 
     pub fn receive(&self, id: usize) -> Option<E> {
         let mut queue_map = self.queue_map_mutex.lock().unwrap();
-        (*queue_map).pop(&id)
+        queue_map.pop(&id)
     }
 }
 
@@ -78,17 +78,17 @@ pub trait Broadcaster<E: Event> {
 
 impl<E: Event> Broadcaster<E> for HasDispatcher<E> {
     fn broadcast(&self, event: E) {
-        (*self.dispatcher()).broadcast(event);
+        self.dispatcher().broadcast(event);
     }
 }
 
 impl<E: Event> Broadcaster<E> for Dispatcher<E> {
     fn broadcast(&self, event: E) {
         let mut queue_map = self.queue_map_mutex.lock().unwrap();
-        (*queue_map).push(event);
+        queue_map.push(event);
 
         self.sequencer.as_ref().map(|sequencer| {
-            (*sequencer).broadcast(SequenceEvent::new(self.id));
+            sequencer.broadcast(SequenceEvent::new(self.id));
         });
     }
 }
