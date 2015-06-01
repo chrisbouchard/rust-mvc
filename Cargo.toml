@@ -6,3 +6,6 @@ authors = ["Chris Bouchard <chris@upliftinglemma.net>"]
 [lib]
 name = "mvc"
 
+[dependencies]
+log = "*"
+

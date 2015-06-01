@@ -1,2 +1,4 @@
-pub trait Event : Copy {}
+use std::fmt::Debug;
+
+pub trait Event : Copy + Debug {}
 

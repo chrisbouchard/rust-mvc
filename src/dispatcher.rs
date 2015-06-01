@@ -6,7 +6,7 @@ use super::event::*;
 use super::queue_map::*;
 
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct SequenceEvent {
     dispatcher_id: usize
 }
@@ -37,8 +37,12 @@ unsafe impl<E: Event> Sync for Dispatcher<E> {}
 
 impl<E: Event> Dispatcher<E> {
     pub fn new(sequencer: Arc<Sequencer>) -> Dispatcher<E> {
+        let dispatcher_id = id_counter::next_id();
+
+        info!("Creating new dispatcher with id {} and sequencer {}", dispatcher_id, sequencer.id);
+
         Dispatcher {
-            id: id_counter::next_id(),
+            id: dispatcher_id,
             sequencer: Some(sequencer),
             queue_map_mutex: Mutex::new(QueueMap::new())
         }
@@ -49,7 +53,12 @@ impl<E: Event> Dispatcher<E> {
     }
 
     pub fn register(&self, id: usize) {
+        info!("Registering listener id {} on dispatcher {}", id, self.id);
+        debug!("Waiting for mutex on dispatcher {}...", self.id);
+
         let mut queue_map = self.queue_map_mutex.lock().unwrap();
+        debug!("Got mutex on dispatcher {}!", self.id);
+
         queue_map.add(id);
     }
 
@@ -59,10 +68,16 @@ impl<E: Event> Dispatcher<E> {
     }
 
     pub fn broadcast(&self, event: E) {
+        info!("Broadcasting event on dispatcher {}: {:?}", self.id, event);
+        debug!("Waiting for mutex on dispatcher {}...", self.id);
+
         let mut queue_map = self.queue_map_mutex.lock().unwrap();
+        debug!("Got mutex on dispatcher {}!", self.id);
+
         queue_map.push(event);
 
         self.sequencer.as_ref().map(|sequencer| {
+            debug!("Broadcasting sequence event from dispatcher {} to sequencer {}", self.id, sequencer.id);
             sequencer.broadcast(SequenceEvent::new(self.id));
         });
     }
@@ -70,8 +85,12 @@ impl<E: Event> Dispatcher<E> {
 
 
 pub fn sequencer() -> Sequencer {
+    let sequencer_id = id_counter::next_id();
+
+    info!("Creating new sequencer with id {}", sequencer_id);
+
     Dispatcher {
-        id: id_counter::next_id(),
+        id: sequencer_id,
         sequencer: None,
         queue_map_mutex: Mutex::new(QueueMap::new())
     }

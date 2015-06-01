@@ -17,8 +17,12 @@ pub struct Listener<'a, A: Application + 'a, C> {
 
 impl<'a, A: Application + 'a, C> Listener<'a, A, C> {
     pub fn new<'b>(application: Arc<A>, context: C, sequencer: Arc<Sequencer>) -> Listener<'b, A, C> {
+        let listener_id = id_counter::next_id();
+
+        info!("Creating new listener with id {} and sequencer {}", listener_id, sequencer.id());
+
         Listener {
-            id: id_counter::next_id(),
+            id: listener_id,
             application: application,
             context: context,
             sequencer: sequencer,
@@ -27,15 +31,21 @@ impl<'a, A: Application + 'a, C> Listener<'a, A, C> {
     }
 
     pub fn run(&mut self) {
+        info!("Starting main loop for listener {}", self.id);
+
         loop {
             match (*self.sequencer).receive(self.id) {
                 None => (),
                 Some(seq_event) => {
+                    info!("Listener {} got a sequence event from sequencer {}: {:?}", self.id, self.sequencer.id(), seq_event);
+
                     let dispatcher_id = seq_event.dispatcher_id();
 
                     match self.updaters.get(&dispatcher_id) {
                         None => (),
-                        Some(update_box) => (*update_box)(&*self.application, &mut self.context)
+                        Some(update_box) => {
+                            (*update_box)(&*self.application, &mut self.context)
+                        }
                     }
                 }
             }
@@ -66,16 +76,23 @@ where E: Event + 'a, A: Application + 'a + HasDispatcher<E> {
     type Context = C;
 
     fn add_handler<H>(&mut self, handler: H) where H: Handler<E, Application=A, Context=C> + 'a {
-        let id = self.id;
+        let listener_id = self.id;
+
+        info!("Adding handler to listener {}", listener_id);
 
         let app: Arc<A> = self.application.clone();
         let dispatcher: Arc<Dispatcher<E>> = app.dispatcher();
         let dispatcher_id = dispatcher.id();
 
-        dispatcher.register(id);
+        debug!("Matching handler on listener {} to dispatcher {}", listener_id, dispatcher_id);
+
+        dispatcher.register(listener_id);
 
         self.updaters.insert(dispatcher_id, Box::new(move |app, context| {
-            dispatcher.receive(id).map(|event| handler.handle(event, app, context));
+            dispatcher.receive(listener_id).map(|event| {
+                info!("Listener {} got an event from dispatcher {}: {:?}", listener_id, dispatcher_id, event);
+                handler.handle(event, app, context)
+            });
         }));
     }
 }
