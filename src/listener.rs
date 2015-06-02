@@ -33,20 +33,17 @@ impl<'a, A: Application + 'a, C> Listener<'a, A, C> {
     pub fn run(&mut self) {
         info!("Starting main loop for listener {}", self.id);
 
+        self.sequencer.register(self.id);
+
         loop {
-            match (*self.sequencer).receive(self.id) {
-                None => (),
-                Some(seq_event) => {
-                    info!("Listener {} got a sequence event from sequencer {}: {:?}", self.id, self.sequencer.id(), seq_event);
+            if let Some(seq_event) = self.sequencer.receive(self.id) {
+                info!("Listener {} got a sequence event from sequencer {}: {:?}", self.id, self.sequencer.id(), seq_event);
 
-                    let dispatcher_id = seq_event.dispatcher_id();
+                let dispatcher_id = seq_event.dispatcher_id();
 
-                    match self.updaters.get(&dispatcher_id) {
-                        None => (),
-                        Some(update_box) => {
-                            (*update_box)(&*self.application, &mut self.context)
-                        }
-                    }
+                if let Some(update_box) = self.updaters.get(&dispatcher_id) {
+                    info!("Calling updater for dispatcher {}", dispatcher_id);
+                    (*update_box)(&*self.application, &mut self.context)
                 }
             }
         }

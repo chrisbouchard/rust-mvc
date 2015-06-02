@@ -2,6 +2,7 @@ use std::collections::{HashMap, VecDeque};
 use std::hash::Hash;
 use std::usize;
 
+#[derive(Debug)]
 struct QueueEntry<V> {
     value: V,
     count: usize
@@ -17,7 +18,8 @@ impl<V> QueueEntry<V> {
 }
 
 
-pub struct QueueMap<K, V> {
+#[derive(Debug)]
+pub struct QueueMap<K, V> where K: Hash + Eq, V: Copy {
     queue: VecDeque<QueueEntry<V>>,
     indeces: HashMap<K, usize>,
     dangling: usize,
@@ -40,10 +42,13 @@ impl<K, V> QueueMap<K, V> where K: Hash + Eq, V: Copy {
     }
 
     pub fn push(&mut self, value: V) {
-        self.queue.push_back(QueueEntry::new(value, self.dangling));
+        let include_prev =
+            if self.queue.is_empty() { 0 } else { 1 };
+
+        self.queue.push_back(QueueEntry::new(value, self.dangling + include_prev));
         self.dangling = 0;
 
-        if self.shift + self.queue.len() >= usize::MAX {
+        if self.shift + self.queue.len() == usize::MAX {
             self.compact();
         }
     }
@@ -51,33 +56,40 @@ impl<K, V> QueueMap<K, V> where K: Hash + Eq, V: Copy {
     pub fn pop(&mut self, key: &K) -> Option<V> {
         let mut needs_shift = false;
 
-        let result =
-            match self.indeces.get_mut(key) {
-                None => None,
-                Some(index) =>
-                    match self.queue.get_mut(*index - self.shift) {
-                        None => None,
-                        Some(entry) => {
-                            let value = (*entry).value;
+        let mut result = None;
 
-                            *index += 1;
-                            entry.count -= 1;
+        if let Some(index) = self.indeces.get_mut(key) {
+            if let Some(entry) = self.queue.get_mut(*index - self.shift) {
+                result = Some(entry.value);
 
-                            if entry.count == 0 {
-                                needs_shift = true;
-                            }
+                *index += 1;
+                entry.count -= 1;
 
-                            Some(value)
-                        }
-                    }
-            };
+                if entry.count == 0 {
+                    needs_shift = true;
+                }
+            }
 
-        if needs_shift {
-            self.queue.pop_front();
-            self.shift += 1;
+            if let Some(entry) = self.queue.get_mut(*index - self.shift) {
+                entry.count += 1;
+            }
         }
 
-        if self.shift + self.queue.len() >= usize::MAX {
+        while needs_shift {
+            self.queue.pop_front();
+            self.shift += 1;
+
+            needs_shift =
+                match self.queue.front_mut() {
+                    None => false,
+                    Some(front) => {
+                        front.count -= 1;
+                        front.count == 0
+                    }
+                };
+        }
+
+        if self.shift + self.queue.len() == usize::MAX {
             self.compact();
         }
 
@@ -96,6 +108,58 @@ impl<K, V> QueueMap<K, V> where K: Hash + Eq, V: Copy {
         }
 
         self.shift = 0;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::QueueMap;
+
+    #[test]
+    fn test_new() {
+        let _: QueueMap<usize, usize> = QueueMap::new();
+    }
+
+    #[test]
+    fn test_simple() {
+        let mut queue_map: QueueMap<usize, usize> = QueueMap::new();
+
+        queue_map.add(1);
+        queue_map.push(2);
+
+        assert_eq!(Some(2), queue_map.pop(&1));
+        assert_eq!(None, queue_map.pop(&1));
+    }
+
+    #[test]
+    fn test_two_queues() {
+        let mut queue_map: QueueMap<usize, usize> = QueueMap::new();
+
+        queue_map.add(1);
+        queue_map.add(2);
+
+        queue_map.push(1);
+        queue_map.push(2);
+
+        assert_eq!(Some(1), queue_map.pop(&1));
+
+        queue_map.add(3);
+
+        queue_map.push(3);
+
+        assert_eq!(Some(1), queue_map.pop(&2));
+
+        assert_eq!(Some(3), queue_map.pop(&3));
+
+        assert_eq!(Some(2), queue_map.pop(&1));
+        assert_eq!(Some(2), queue_map.pop(&2));
+
+        assert_eq!(Some(3), queue_map.pop(&1));
+        assert_eq!(Some(3), queue_map.pop(&2));
+
+        assert_eq!(None, queue_map.pop(&1));
+        assert_eq!(None, queue_map.pop(&2));
+        assert_eq!(None, queue_map.pop(&3));
     }
 }
 

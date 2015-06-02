@@ -52,19 +52,22 @@ impl<E: Event> Dispatcher<E> {
         self.id
     }
 
-    pub fn register(&self, id: usize) {
-        info!("Registering listener id {} on dispatcher {}", id, self.id);
+    pub fn register(&self, listener_id: usize) {
+        info!("Registering listener id {} on dispatcher {}", listener_id, self.id);
         debug!("Waiting for mutex on dispatcher {}...", self.id);
 
         let mut queue_map = self.queue_map_mutex.lock().unwrap();
         debug!("Got mutex on dispatcher {}!", self.id);
 
-        queue_map.add(id);
+        queue_map.add(listener_id);
+
+        debug!("Dispatcher {}: {:?}", self.id, *queue_map);
+        debug!("Letting go of mutex on dispatcher {}", self.id);
     }
 
-    pub fn receive(&self, id: usize) -> Option<E> {
+    pub fn receive(&self, listener_id: usize) -> Option<E> {
         let mut queue_map = self.queue_map_mutex.lock().unwrap();
-        queue_map.pop(&id)
+        queue_map.pop(&listener_id)
     }
 
     pub fn broadcast(&self, event: E) {
@@ -76,10 +79,14 @@ impl<E: Event> Dispatcher<E> {
 
         queue_map.push(event);
 
+        debug!("Dispatcher {}: {:?}", self.id, *queue_map);
+
         self.sequencer.as_ref().map(|sequencer| {
             debug!("Broadcasting sequence event from dispatcher {} to sequencer {}", self.id, sequencer.id);
             sequencer.broadcast(SequenceEvent::new(self.id));
         });
+
+        debug!("Letting go of mutex on dispatcher {}", self.id);
     }
 }
 
