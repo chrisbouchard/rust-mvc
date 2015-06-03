@@ -55,7 +55,6 @@ impl<K, V> QueueMap<K, V> where K: Hash + Eq, V: Copy {
 
     pub fn pop(&mut self, key: &K) -> Option<V> {
         let mut needs_shift = false;
-
         let mut result = None;
 
         if let Some(index) = self.indeces.get_mut(key) {
@@ -72,6 +71,9 @@ impl<K, V> QueueMap<K, V> where K: Hash + Eq, V: Copy {
 
             if let Some(entry) = self.queue.get_mut(*index - self.shift) {
                 entry.count += 1;
+            }
+            else {
+                self.dangling += 1;
             }
         }
 
