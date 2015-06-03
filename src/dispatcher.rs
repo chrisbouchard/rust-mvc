@@ -74,19 +74,20 @@ impl<E: Event> Dispatcher<E> {
         info!("Broadcasting event on dispatcher {}: {:?}", self.id, event);
         debug!("Waiting for mutex on dispatcher {}...", self.id);
 
-        let mut queue_map = self.queue_map_mutex.lock().unwrap();
-        debug!("Got mutex on dispatcher {}!", self.id);
+        {
+            let mut queue_map = self.queue_map_mutex.lock().unwrap();
+            debug!("Got mutex on dispatcher {}!", self.id);
 
-        queue_map.push(event);
+            queue_map.push(event);
 
-        debug!("Dispatcher {}: {:?}", self.id, *queue_map);
+            debug!("Dispatcher {}: {:?}", self.id, *queue_map);
+            debug!("Letting go of mutex on dispatcher {}", self.id);
+        }
 
-        self.sequencer.as_ref().map(|sequencer| {
+        if let Some(ref sequencer) = self.sequencer {
             debug!("Broadcasting sequence event from dispatcher {} to sequencer {}", self.id, sequencer.id);
             sequencer.broadcast(SequenceEvent::new(self.id));
-        });
-
-        debug!("Letting go of mutex on dispatcher {}", self.id);
+        }
     }
 }
 
